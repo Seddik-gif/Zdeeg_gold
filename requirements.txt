@@ -1,0 +1,4 @@
+yfinance
+feedparser
+vaderSentiment
+python-telegram-bot[job-queue]
