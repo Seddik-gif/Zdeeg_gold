@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gold Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0C0C0C; --surface:#141414; --surface2:#1C1C1C; --border:#2A2A2A;
+    --gold:#C9A84C; --gold-dim:#7A6330; --gold-bg:rgba(201,168,76,0.07);
+    --green:#3DAA74; --red:#D05454; --text:#E8E4DC; --muted:#7A7A7A;
+    --mono:'DM Mono',monospace;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:inherit;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px 16px;border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:10;}
+  .header-left{display:flex;align-items:center;gap:12px;}
+  .logo-mark{width:32px;height:32px;background:var(--gold);border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:16px;color:#000;}
+  h1{font-size:15px;font-weight:600;letter-spacing:-0.01em;}
+  .subtitle{font-size:11px;color:var(--muted);margin-top:1px;}
+
+  .refresh-btn{display:flex;align-items:center;gap:7px;background:var(--gold-bg);border:1px solid var(--gold-dim);color:var(--gold);font-family:inherit;font-size:12px;font-weight:500;padding:7px 14px;border-radius:6px;cursor:pointer;transition:background .15s;}
+  .refresh-btn:hover{background:rgba(201,168,76,0.14);}
+  .refresh-btn svg{width:13px;height:13px;}
+  .refresh-btn.loading svg{animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  main{padding:24px 28px;max-width:1100px;}
+
+  .timestamp{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+  .timestamp .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+  .timestamp .dot.stale{background:var(--muted);box-shadow:none;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+  .kpi{background:var(--surface);padding:18px 20px;}
+  .kpi-label{font-size:10px;color:var(--muted);letter-spacing:0.04em;margin-bottom:6px;}
+  .kpi-value{font-family:var(--mono);font-size:22px;font-weight:500;line-height:1;}
+  .kpi-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px;}
+  .up{color:var(--green);} .dn{color:var(--red);} .gold-text{color:var(--gold);}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  @media(max-width:680px){.two-col{grid-template-columns:1fr;}main{padding:16px;}header{padding:14px 16px;}}
+
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .panel-title{font-size:12px;font-weight:600;letter-spacing:0.02em;}
+  .panel-body{padding:18px;}
+
+  .gauge-wrap{display:flex;flex-direction:column;gap:14px;}
+  .gauge-meta{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .gauge-name{font-size:12px;color:var(--muted);}
+  .gauge-val{font-family:var(--mono);font-size:13px;font-weight:500;}
+  .gauge-track{height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
+  .gauge-fill{height:100%;border-radius:99px;background:var(--gold);transition:width .6s cubic-bezier(.4,0,.2,1);}
+  .gauge-fill.green{background:var(--green);} .gauge-fill.red{background:var(--red);}
+
+  .verdict{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;}
+  .verdict.bull{background:rgba(61,170,116,.15);color:var(--green);}
+  .verdict.bear{background:rgba(208,84,84,.15);color:var(--red);}
+  .verdict.neut{background:rgba(201,168,76,.12);color:var(--gold);}
+
+  .tech-table{width:100%;border-collapse:collapse;}
+  .tech-table tr{border-bottom:1px solid var(--border);}
+  .tech-table tr:last-child{border-bottom:none;}
+  .tech-table td{padding:9px 0;font-size:12px;}
+  .tech-table td:last-child{text-align:right;font-family:var(--mono);}
+
+  .signal{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:600;}
+  .signal.buy{background:rgba(61,170,116,.15);color:var(--green);}
+  .signal.sell{background:rgba(208,84,84,.15);color:var(--red);}
+  .signal.hold{background:rgba(201,168,76,.12);color:var(--gold);}
+
+  .news-list{display:flex;flex-direction:column;}
+  .news-item{padding:12px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;}
+  .news-item:last-child{border-bottom:none;}
+  .news-dot{flex-shrink:0;width:7px;height:7px;border-radius:50%;margin-top:5px;}
+  .news-dot.pos{background:var(--green);} .news-dot.neg{background:var(--red);} .news-dot.neu{background:var(--muted);}
+  .news-title{font-size:12px;line-height:1.45;}
+  .news-title a{color:var(--text);text-decoration:none;}
+  .news-title a:hover{color:var(--gold);}
+  .news-src{font-size:10px;color:var(--muted);margin-top:3px;font-family:var(--mono);}
+
+  .full-panel{margin-bottom:16px;}
+  .status-bar{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);flex-wrap:wrap;}
+
+  .analysis-text{font-size:13px;line-height:1.7;color:#C0BDB6;}
+  .analysis-text p{margin-bottom:10px;} .analysis-text p:last-child{margin-bottom:0;}
+
+  .range-row{display:flex;align-items:center;gap:10px;margin-top:14px;}
+  .range-label{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
+  .range-track{flex:1;height:4px;background:var(--border);border-radius:99px;position:relative;}
+  .range-marker{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:var(--gold);border:2px solid var(--bg);border-radius:50%;}
+
+  .error-msg{color:var(--red);font-size:12px;padding:12px;background:rgba(208,84,84,.08);border:1px solid rgba(208,84,84,.2);border-radius:6px;margin-bottom:16px;}
+
+  #loadingOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:100;transition:opacity .4s;}
+  .spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
+  #loadingMsg{color:var(--muted);font-size:13px;}
+
+  .source-tag{display:inline-block;font-size:9px;font-family:var(--mono);color:var(--muted);border:1px solid var(--border);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle;}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div style="width:40px;height:40px;background:var(--gold);border-radius:8px;display:grid;place-items:center;color:#000;font-weight:700;font-size:18px;">Au</div>
+  <div class="spinner"></div>
+  <p id="loadingMsg">Fetching live gold data…</p>
+</div>
+
+<header>
+  <div class="header-left">
+    <div class="logo-mark">Au</div>
+    <div>
+      <h1>Gold Market Dashboard</h1>
+      <div class="subtitle">XAU/USD · Free data · No API key required</div>
+    </div>
+  </div>
+  <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke-linecap="round"/>
+      <path d="M10 4.5h3V1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Refresh
+  </button>
+</header>
+
+<main>
+  <div class="timestamp" id="timestamp"><div class="dot stale"></div><span>Loading…</span></div>
+  <div id="errorBox" style="display:none" class="error-msg"></div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Spot Price</div><div class="kpi-value" id="kpiPrice">—</div><div class="kpi-sub" id="kpiChange">—</div></div>
+    <div class="kpi"><div class="kpi-label">Day Range</div><div class="kpi-value gold-text" id="kpiRange">—</div><div class="kpi-sub">Low → High</div></div>
+    <div class="kpi"><div class="kpi-label">Overall Sentiment</div><div class="kpi-value" id="kpiSentiment">—</div><div class="kpi-sub" id="kpiSentimentSub">—</div></div>
+    <div class="kpi"><div class="kpi-label">Market Trend</div><div class="kpi-value" id="kpiTrend">—</div><div class="kpi-sub">vs moving averages</div></div>
+    <div class="kpi"><div class="kpi-label">RSI-14</div><div class="kpi-value" id="kpiRsi">—</div><div class="kpi-sub" id="kpiRsiSub">—</div></div>
+  </div>
+
+  <div class="panel full-panel">
+    <div class="status-bar">
+      <span id="sbSession">—</span><span id="sbSMA20">SMA-20: —</span>
+      <span id="sbSMA50">SMA-50: —</span><span id="sb52Hi">52w High: —</span><span id="sb52Lo">52w Low: —</span>
+    </div>
+    <div class="panel-body">
+      <div class="range-row">
+        <span class="range-label" id="rangeLo">—</span>
+        <div class="range-track"><div id="rangeMarker" class="range-marker" style="left:50%"></div></div>
+        <span class="range-label" id="rangeHi">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Sentiment Scores</span><span id="overallBadge" class="verdict neut">—</span></div>
+      <div class="panel-body">
+        <div class="gauge-wrap">
+          <div><div class="gauge-meta"><span class="gauge-name">Overall</span><span class="gauge-val" id="gOverall">—</span></div><div class="gauge-track"><div class="gauge-fill" id="gfOverall" style="width:0%"></div></div></div>
+          <div><div class="gauge-meta"><span class="gauge-name">News Sentiment <span class="source-tag">Google News</span></span><span class="gauge-val" id="gNews">—</span></div><div class="gauge-track"><div class="gauge-fill" id="gfNews" style="width:0%"></div></div></div>
+          <div><div class="gauge-meta"><span class="gauge-name">Technical Score <span class="source-tag">Yahoo Finance</span></span><span class="gauge-val" id="gTech">—</span></div><div class="gauge-track"><div class="gauge-fill" id="gfTech" style="width:0%"></div></div></div>
+          <div><div class="gauge-meta"><span class="gauge-name">Momentum (RSI-14)</span><span class="gauge-val" id="gMom">—</span></div><div class="gauge-track"><div class="gauge-fill" id="gfMom" style="width:0%"></div></div></div>
+        </div>
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">News breakdown</div>
+          <div style="display:flex;gap:16px;">
+            <div><span class="up" style="font-family:var(--mono);font-size:18px;font-weight:500" id="newsPos">—</span><div style="font-size:10px;color:var(--muted);margin-top:2px">bullish</div></div>
+            <div><span style="color:var(--muted);font-family:var(--mono);font-size:18px;font-weight:500" id="newsNeu">—</span><div style="font-size:10px;color:var(--muted);margin-top:2px">neutral</div></div>
+            <div><span class="dn" style="font-family:var(--mono);font-size:18px;font-weight:500" id="newsNeg">—</span><div style="font-size:10px;color:var(--muted);margin-top:2px">bearish</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Technical Signals</span><span id="techBadge" class="verdict neut">—</span></div>
+      <div class="panel-body">
+        <table class="tech-table">
+          <tbody>
+            <tr><td style="color:var(--muted)">Spot vs SMA-20</td><td id="tSMA20">—</td></tr>
+            <tr><td style="color:var(--muted)">Spot vs SMA-50</td><td id="tSMA50">—</td></tr>
+            <tr><td style="color:var(--muted)">SMA-20 vs SMA-50</td><td id="tSMAcross">—</td></tr>
+            <tr><td style="color:var(--muted)">RSI-14</td><td id="tRSI">—</td></tr>
+            <tr><td style="color:var(--muted)">Day change</td><td id="tDayChg">—</td></tr>
+            <tr><td style="color:var(--muted)">vs 52w High</td><td id="t52Hi">—</td></tr>
+            <tr><td style="color:var(--muted)">Overall trend</td><td id="tTrend">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Market Analysis</span><span class="source-tag" style="font-size:10px;color:var(--muted)">rule-based</span></div>
+      <div class="panel-body"><div class="analysis-text" id="analysisText"><p style="color:var(--muted)">Loading…</p></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Top Headlines</span><span class="source-tag" style="font-size:10px;color:var(--muted)">Google News RSS</span></div>
+      <div class="panel-body" style="padding:0 18px"><div class="news-list" id="newsList"></div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── VADER-lite: a minimal port of the VADER lexicon for browser use ──────────
+// We ship a compact gold-finance word list. Good enough for headline sentiment.
+const VADER_GOLD = {
+  // strongly positive
+  surges:2.5, surge:2.5, soars:2.5, soar:2.5, rallies:2.5, rally:2.2,
+  rises:1.8, rise:1.5, gains:1.8, gain:1.5, climbs:1.8, climbs:1.5,
+  bullish:2.5, breakout:2.2, record:2.0, high:1.5, strong:1.5,
+  safe:1.2, haven:1.2, demand:1.0, buying:1.0, inflow:1.2,
+  optimism:1.8, positive:1.5, confidence:1.5, recovery:1.8,
+  // negative
+  falls:−1.8, fall:−1.5, drops:−2.0, drop:−1.8, slides:−1.8, slide:−1.5,
+  plunges:−2.5, plunge:−2.5, tumbles:−2.2, tumble:−2.0, sinks:−1.8,
+  bearish:−2.5, selloff:−2.2, pressure:−1.2, weak:−1.5, concern:−1.2,
+  fears:−1.5, fear:−1.2, risk:−1.0, uncertainty:−1.2, decline:−1.5,
+  declines:−1.5, retreats:−1.5, retreat:−1.2, lowers:−1.2, lower:−0.8,
+  inflation:−0.5, hawkish:−1.5, tightening:−1.2, dollar:−0.5,
+  // near-neutral with slight colour
+  steady:0.3, stable:0.3, holds:0.3, mixed:0.0, flat:0.0, unchanged:0.0,
+};
+function vaderScore(text) {
+  const words = text.toLowerCase().replace(/[^a-z\s]/g,' ').split(/\s+/);
+  let sum = 0, n = 0;
+  for (const w of words) {
+    if (VADER_GOLD[w] !== undefined) { sum += VADER_GOLD[w]; n++; }
+  }
+  if (n === 0) return 0;
+  const raw = sum / n;
+  return Math.max(-1, Math.min(1, raw / 2.5)); // normalise to -1..1
+}
+
+// ── YAHOO FINANCE via allorigins CORS proxy ───────────────────────────────────
+const PROXY = "https://api.allorigins.win/raw?url=";
+
+async function fetchYahoo(symbol, range, interval) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=false`;
+  const res = await fetch(PROXY + encodeURIComponent(url));
+  if (!res.ok) throw new Error(`Yahoo fetch failed: ${res.status}`);
+  return res.json();
+}
+
+function calcRSI(closes, period=14) {
+  const deltas = closes.slice(1).map((v,i) => v - closes[i]);
+  const gains  = deltas.map(d => d > 0 ? d : 0);
+  const losses = deltas.map(d => d < 0 ? -d : 0);
+  const avgG   = gains.slice(-period).reduce((a,b)=>a+b,0) / period;
+  const avgL   = losses.slice(-period).reduce((a,b)=>a+b,0) / period;
+  if (avgL === 0) return 100;
+  return 100 - 100 / (1 + avgG / avgL);
+}
+
+function sma(arr, n) {
+  const tail = arr.slice(-n);
+  return tail.reduce((a,b)=>a+b,0) / tail.length;
+}
+
+async function getPriceData() {
+  // 3 months daily for SMA-50; 1 year for 52-week range
+  const [d3mo, d1y] = await Promise.all([
+    fetchYahoo("GC=F", "3mo", "1d"),
+    fetchYahoo("GC=F", "1y",  "1d"),
+  ]);
+
+  const chart3 = d3mo.chart.result[0];
+  const chart1 = d1y.chart.result[0];
+
+  const closes3 = chart3.indicators.quote[0].close.filter(Boolean);
+  const highs3  = chart3.indicators.quote[0].high.filter(Boolean);
+  const lows3   = chart3.indicators.quote[0].low.filter(Boolean);
+
+  const closes1 = chart1.indicators.quote[0].close.filter(Boolean);
+  const highs1  = chart1.indicators.quote[0].high.filter(Boolean);
+  const lows1   = chart1.indicators.quote[0].low.filter(Boolean);
+
+  const spot     = closes3.at(-1);
+  const prev     = closes3.at(-2);
+  const dayHigh  = highs3.at(-1);
+  const dayLow   = lows3.at(-1);
+  const sma20v   = sma(closes3, 20);
+  const sma50v   = sma(closes3, 50);
+  const hi52     = Math.max(...highs1);
+  const lo52     = Math.min(...lows1);
+  const rsi14    = calcRSI(closes3);
+
+  return {
+    spot, prev,
+    changePct: (spot - prev) / prev * 100,
+    dayHigh, dayLow,
+    sma20: sma20v, sma50: sma50v,
+    vsSma20: (spot - sma20v) / sma20v * 100,
+    vsSma50: (spot - sma50v) / sma50v * 100,
+    vs52hi:  (spot - hi52)   / hi52   * 100,
+    hi52, lo52, rsi14,
+  };
+}
+
+// ── GOOGLE NEWS RSS via allorigins ────────────────────────────────────────────
+async function getNews() {
+  const queries = ["gold+price", "XAUUSD", "gold+market"];
+  const items = [];
+
+  await Promise.allSettled(queries.map(async q => {
+    const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`;
+    const res = await fetch(PROXY + encodeURIComponent(rssUrl));
+    const text = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, "application/xml");
+    const entries = [...doc.querySelectorAll("item")].slice(0, 10);
+    for (const e of entries) {
+      const title = e.querySelector("title")?.textContent || "";
+      const link  = e.querySelector("link")?.textContent || e.querySelector("guid")?.textContent || "#";
+      const desc  = e.querySelector("description")?.textContent || "";
+      const score = vaderScore(title + " " + desc);
+      items.push({ title, link, score });
+    }
+  }));
+
+  // De-duplicate by title similarity
+  const seen = new Set();
+  const unique = items.filter(i => {
+    const key = i.title.slice(0, 40).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  const scores = unique.map(i => i.score);
+  const avg    = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : 0;
+  const pos    = scores.filter(s=>s>0.05).length;
+  const neg    = scores.filter(s=>s<-0.05).length;
+  const neu    = scores.length - pos - neg;
+
+  unique.sort((a,b) => Math.abs(b.score) - Math.abs(a.score));
+  return { avg, headlines: unique.slice(0,7), pos, neg, neu };
+}
+
+// ── RULE-BASED ANALYSIS TEXT ──────────────────────────────────────────────────
+function generateAnalysis(p, s) {
+  const direction = p.changePct >= 0 ? "gaining" : "losing";
+  const magnitude = Math.abs(p.changePct) > 1 ? "significantly" : "modestly";
+  const rsiNote   = p.rsi14 >= 70 ? "RSI is in overbought territory, suggesting a potential short-term pullback."
+                  : p.rsi14 <= 30 ? "RSI is in oversold territory, which may attract dip buyers."
+                  : `RSI at ${p.rsi14.toFixed(0)} sits in neutral range, giving no strong momentum signal.`;
+  const trendNote = p.spot > p.sma20 && p.sma20 > p.sma50
+                  ? "Price is trading above both SMA-20 and SMA-50, confirming a sustained uptrend."
+                  : p.spot < p.sma20 && p.sma20 < p.sma50
+                  ? "Price is below both SMA-20 and SMA-50, indicating a bearish structure."
+                  : "Price is caught between the two key moving averages, suggesting indecision.";
+  const newsNote  = s.newsScore >= 65 ? "News flow is predominantly positive for gold."
+                  : s.newsScore <= 35 ? "Headline sentiment is negative, pointing to near-term headwinds."
+                  : "News sentiment is mixed, reflecting a balanced market narrative.";
+  const levelNote = `Key support sits near SMA-20 ($${p.sma20.toFixed(0)}). Resistance is near the 52-week high of $${p.hi52.toFixed(0)} (${p.vs52hi.toFixed(1)}% away).`;
+
+  return [
+    `Gold (XAU/USD) is ${magnitude} ${direction} today at $${p.spot.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}, ${p.changePct >= 0 ? "up" : "down"} ${Math.abs(p.changePct).toFixed(2)}% from yesterday's close. The intraday range is $${p.dayLow.toFixed(0)}–$${p.dayHigh.toFixed(0)}.`,
+    `${trendNote} ${rsiNote}`,
+    `${newsNote} ${levelNote}`,
+  ];
+}
+
+// ── SCORING ───────────────────────────────────────────────────────────────────
+function scoreColor(v) { return v>=65?'var(--green)':v<=35?'var(--red)':'var(--gold)'; }
+function scoreClass(v) { return v>=65?'green':v<=35?'red':''; }
+function verdictClass(v){ return v>=65?'bull':v<=35?'bear':'neut'; }
+function verdictLabel(v){ return v>=65?'▲ Bullish':v<=35?'▼ Bearish':'◆ Neutral'; }
+function signalHtml(l,c){ return `<span class="signal ${c}">${l}</span>`; }
+function pctHtml(v){ const c=v>=0?'up':'dn'; return `<span class="${c}">${v>=0?'+':''}${v.toFixed(2)}%</span>`; }
+function setGauge(id,fillId,val){
+  document.getElementById(id).textContent=`${Math.round(val)}/100`;
+  const f=document.getElementById(fillId);
+  f.style.width=Math.max(0,Math.min(100,val))+'%';
+  f.className='gauge-fill '+scoreClass(val);
+}
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading'); btn.disabled=true;
+  document.getElementById('errorBox').style.display='none';
+  document.getElementById('loadingMsg').textContent='Fetching gold price…';
+  document.getElementById('loadingOverlay').style.cssText='display:flex;opacity:1;';
+
+  try {
+    const [price, news] = await Promise.all([
+      getPriceData().catch(e=>{ throw new Error("Price data: "+e.message); }),
+      getNews().catch(()=>({ avg:0, headlines:[], pos:0, neg:0, neu:0 })),
+    ]);
+
+    document.getElementById('loadingMsg').textContent='Building dashboard…';
+
+    // Compute scores
+    const techScore  = Math.max(0, Math.min(100, 50 + price.vsSma20 * 4));
+    const newsScore  = Math.round((news.avg + 1) / 2 * 100);
+    const momScore   = Math.max(0, Math.min(100, price.rsi14));
+    const overall    = Math.round(0.5*newsScore + 0.35*techScore + 0.15*momScore);
+
+    const scores = { overall, newsScore, techScore, momScore };
+    render(price, news, scores);
+
+    document.getElementById('loadingOverlay').style.opacity='0';
+    setTimeout(()=>document.getElementById('loadingOverlay').style.display='none', 400);
+  } catch(e) {
+    document.getElementById('loadingOverlay').style.display='none';
+    const eb = document.getElementById('errorBox');
+    eb.textContent = "⚠️ "+e.message+" — check your connection and try Refresh.";
+    eb.style.display='block';
+  } finally {
+    btn.classList.remove('loading'); btn.disabled=false;
+  }
+}
+
+function render(p, news, s) {
+  const now = new Date();
+
+  // Timestamp
+  const ts=document.getElementById('timestamp');
+  ts.querySelector('.dot').classList.remove('stale');
+  ts.querySelector('span').textContent=`Updated ${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} — ${now.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+
+  // KPIs
+  const cc=p.changePct>=0?'up':'dn', cs=p.changePct>=0?'+':'';
+  document.getElementById('kpiPrice').innerHTML   =`<span class="${cc}">$${p.spot.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</span>`;
+  document.getElementById('kpiChange').innerHTML  =`<span class="${cc}">${cs}${p.changePct.toFixed(2)}% today</span>`;
+  document.getElementById('kpiRange').textContent =`${p.dayLow.toFixed(0)} – ${p.dayHigh.toFixed(0)}`;
+  document.getElementById('kpiSentiment').innerHTML=`<span style="color:${scoreColor(s.overall)}">${s.overall}/100</span>`;
+  document.getElementById('kpiSentimentSub').textContent=verdictLabel(s.overall);
+
+  const isBull = p.spot>p.sma20 && p.sma20>p.sma50;
+  const isBear = p.spot<p.sma20 && p.sma20<p.sma50;
+  const trendLabel = isBull?"Uptrend":isBear?"Downtrend":"Mixed";
+  const trendCls   = isBull?'up':isBear?'dn':'gold-text';
+  document.getElementById('kpiTrend').innerHTML=`<span class="${trendCls}">${trendLabel}</span>`;
+
+  const rc=p.rsi14>=70?'dn':p.rsi14<=30?'up':'gold-text';
+  document.getElementById('kpiRsi').innerHTML   =`<span class="${rc}">${p.rsi14.toFixed(0)}</span>`;
+  document.getElementById('kpiRsiSub').textContent=p.rsi14>=70?'Overbought':p.rsi14<=30?'Oversold':'Normal range';
+
+  // Range bar
+  const pct=Math.max(2,Math.min(98,(p.spot-p.dayLow)/(p.dayHigh-p.dayLow)*100));
+  document.getElementById('rangeLo').textContent=`$${p.dayLow.toFixed(0)}`;
+  document.getElementById('rangeHi').textContent=`$${p.dayHigh.toFixed(0)}`;
+  document.getElementById('rangeMarker').style.left=pct+'%';
+  document.getElementById('sbSession').textContent=`Session ${cs}${p.changePct.toFixed(2)}%`;
+  document.getElementById('sbSMA20').textContent=`SMA-20: $${p.sma20.toFixed(0)}`;
+  document.getElementById('sbSMA50').textContent=`SMA-50: $${p.sma50.toFixed(0)}`;
+  document.getElementById('sb52Hi').textContent=`52w High: $${p.hi52.toFixed(0)}`;
+  document.getElementById('sb52Lo').textContent=`52w Low: $${p.lo52.toFixed(0)}`;
+
+  // Gauges
+  setGauge('gOverall','gfOverall',s.overall);
+  setGauge('gNews',   'gfNews',   s.newsScore);
+  setGauge('gTech',   'gfTech',   s.techScore);
+  setGauge('gMom',    'gfMom',    s.momScore);
+  const ob=document.getElementById('overallBadge');
+  ob.className='verdict '+verdictClass(s.overall);
+  ob.textContent=verdictLabel(s.overall);
+  document.getElementById('newsPos').textContent=news.pos;
+  document.getElementById('newsNeu').textContent=news.neu;
+  document.getElementById('newsNeg').textContent=news.neg;
+
+  // Technical table
+  document.getElementById('tSMA20').innerHTML   =`${pctHtml(p.vsSma20)} &nbsp; ${signalHtml(p.vsSma20>=0?'Above':'Below',p.vsSma20>=0?'buy':'sell')}`;
+  document.getElementById('tSMA50').innerHTML   =`${pctHtml(p.vsSma50)} &nbsp; ${signalHtml(p.vsSma50>=0?'Above':'Below',p.vsSma50>=0?'buy':'sell')}`;
+  document.getElementById('tSMAcross').innerHTML=`$${p.sma20.toFixed(0)} / $${p.sma50.toFixed(0)} &nbsp; ${signalHtml(p.sma20>=p.sma50?'Golden cross':'Death cross',p.sma20>=p.sma50?'buy':'sell')}`;
+  document.getElementById('tRSI').innerHTML     =`${p.rsi14.toFixed(1)} &nbsp; ${signalHtml(p.rsi14>=70?'Overbought':p.rsi14<=30?'Oversold':'Neutral',p.rsi14>=70?'sell':p.rsi14<=30?'buy':'hold')}`;
+  document.getElementById('tDayChg').innerHTML  =pctHtml(p.changePct);
+  document.getElementById('t52Hi').innerHTML    =pctHtml(p.vs52hi);
+  document.getElementById('tTrend').innerHTML   =`${trendLabel} &nbsp; ${signalHtml(trendLabel,isBull?'buy':isBear?'sell':'hold')}`;
+  const tb=document.getElementById('techBadge');
+  tb.className='verdict '+verdictClass(s.techScore);
+  tb.textContent=verdictLabel(s.techScore);
+
+  // Analysis
+  const paras = generateAnalysis(p, s);
+  document.getElementById('analysisText').innerHTML = paras.map(t=>`<p>${t}</p>`).join('');
+
+  // Headlines
+  document.getElementById('newsList').innerHTML = news.headlines.length
+    ? news.headlines.map(h=>{
+        const dc=h.score>0.05?'pos':h.score<-0.05?'neg':'neu';
+        return `<div class="news-item"><div class="news-dot ${dc}"></div><div><div class="news-title"><a href="${h.link}" target="_blank" rel="noopener">${h.title}</a></div><div class="news-src">${dc==='pos'?'bullish':dc==='neg'?'bearish':'neutral'}</div></div></div>`;
+      }).join('')
+    : '<div class="news-item"><div style="color:var(--muted);font-size:12px;padding:12px 0">No headlines loaded — RSS may be blocked by your network.</div></div>';
+}
+
+window.addEventListener('load', loadAll);
+</script>
+</body>
+</html>
