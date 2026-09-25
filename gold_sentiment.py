@@ -17,7 +17,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # ------------------ SETTINGS ------------------
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8644539394:AAFdvSXR27VMYz70EeZwr0YG4Gm9QVt9T8Q")
-CHAT_ID        = int(os.environ.get("CHAT_ID", "8107598336"))
+CHAT_ID        = int(os.environ.get("CHAT_ID", 8107598336))
 ROME           = ZoneInfo("Europe/Rome")
 # ----------------------------------------------
 
