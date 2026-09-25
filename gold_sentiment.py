@@ -16,7 +16,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # ------------------ SETTINGS ------------------
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "YOUR_TOKEN_HERE")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8644539394:AAFdvSXR27VMYz70EeZwr0YG4Gm9QVt9T8Q")
 CHAT_ID        = int(os.environ.get("CHAT_ID") or "8107598336")
 DASHBOARD_URL  = os.environ.get("DASHBOARD_URL", "")   # set via GitHub secret
 ROME           = ZoneInfo("Europe/Rome")
