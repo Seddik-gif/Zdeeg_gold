@@ -1,7 +1,7 @@
 """
 Daily Gold Sentiment Bot (Telegram)
 Free sources only: Yahoo Finance + Google News RSS + VADER sentiment.
-Runs once (GitHub Actions mode) or as a polling bot with /report command.
+Runs once (GitHub Actions mode) or as a polling bot with /report and /dashboard commands.
 """
 
 import os
@@ -16,8 +16,9 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # ------------------ SETTINGS ------------------
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8644539394:AAFdvSXR27VMYz70EeZwr0YG4Gm9QVt9T8Q")
-CHAT_ID        = int(os.environ.get("CHAT_ID", 8107598336))
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "YOUR_TOKEN_HERE")
+CHAT_ID        = int(os.environ.get("CHAT_ID") or "8107598336")
+DASHBOARD_URL  = os.environ.get("DASHBOARD_URL", "")   # set via GitHub secret
 ROME           = ZoneInfo("Europe/Rome")
 # ----------------------------------------------
 
@@ -51,13 +52,11 @@ def get_price_data():
     vs_sma20   = (c - sma20) / sma20 * 100
     vs_sma50   = (c - sma50) / sma50 * 100
 
-    # RSI-14
     delta  = close.diff().dropna()
     gain   = delta.clip(lower=0).tail(14).mean()
     loss   = (-delta.clip(upper=0)).tail(14).mean()
     rsi    = 100 - 100 / (1 + gain / loss) if loss != 0 else 100.0
 
-    # Trend signal
     if c > sma20 > sma50:
         trend = ("🟢 Uptrend", "Price is above both SMA-20 and SMA-50")
     elif c < sma20 < sma50:
@@ -70,8 +69,7 @@ def get_price_data():
         day_low=float(low.iloc[-1]), day_high=float(high.iloc[-1]),
         sma20=sma20, sma50=sma50,
         vs_sma20=vs_sma20, vs_sma50=vs_sma50,
-        rsi=float(rsi),
-        hi52=hi52, lo52=lo52,
+        rsi=float(rsi), hi52=hi52, lo52=lo52,
         trend_label=trend[0], trend_desc=trend[1],
     )
 
@@ -96,12 +94,9 @@ def get_news_sentiment():
 
     avg = sum(scores) / len(scores) if scores else 0.0
     headlines.sort(key=lambda x: abs(x[0]), reverse=True)
-
-    # Count positives / negatives
     pos = sum(1 for s in scores if s > 0.05)
     neg = sum(1 for s in scores if s < -0.05)
     neu = len(scores) - pos - neg
-
     return avg, headlines[:6], pos, neg, neu
 
 
@@ -109,18 +104,16 @@ def get_news_sentiment():
 #  3. SCORING HELPERS
 # ═══════════════════════════════════════════════
 def score_label(score):
-    """Convert 0-100 score to coloured label."""
-    if score >= 65:  return "🟢 Bullish"
-    if score <= 35:  return "🔴 Bearish"
+    if score >= 65: return "🟢 Bullish"
+    if score <= 35: return "🔴 Bearish"
     return "🟡 Neutral"
 
 def rsi_label(rsi):
-    if rsi >= 70:  return f"{rsi:.0f} ⚠️ Overbought"
-    if rsi <= 30:  return f"{rsi:.0f} ⚠️ Oversold"
+    if rsi >= 70: return f"{rsi:.0f} ⚠️ Overbought"
+    if rsi <= 30: return f"{rsi:.0f} ⚠️ Oversold"
     return f"{rsi:.0f} ✅ Normal"
 
 def bar(score, width=10):
-    """ASCII progress bar from 0-100."""
     filled = round(score / 100 * width)
     return "█" * filled + "░" * (width - filled)
 
@@ -129,38 +122,27 @@ def bar(score, width=10):
 #  4. BUILD THE TELEGRAM MESSAGE
 # ═══════════════════════════════════════════════
 def build_message(p, news_avg, headlines, pos, neg, neu):
-    # ── Scores ──────────────────────────────────
     tech_score  = max(0, min(100, 50 + p["vs_sma20"] * 4))
     news_score  = (news_avg + 1) / 2 * 100
     overall     = round(0.55 * news_score + 0.45 * tech_score)
-
-    # ── Intraday candle ─────────────────────────
-    chg_icon = "🔺" if p["day_chg"] >= 0 else "🔻"
-
-    # ── Distance from 52-week extremes ──────────
-    from52hi = (p["close"] - p["hi52"]) / p["hi52"] * 100
-    from52lo = (p["close"] - p["lo52"]) / p["lo52"] * 100
+    chg_icon    = "🔺" if p["day_chg"] >= 0 else "🔻"
+    from52hi    = (p["close"] - p["hi52"]) / p["hi52"] * 100
+    from52lo    = (p["close"] - p["lo52"]) / p["lo52"] * 100
 
     lines = [
         f"🥇 <b>Gold Sentiment Report — {datetime.now(ROME):%d %b %Y, %H:%M}</b>",
         "",
-
-        # ── OVERALL VERDICT ──────────────────────
         "━━━━━━━━━━━━━━━━━━━━━━━━",
         f"📊 <b>OVERALL SCORE: {overall}/100 — {score_label(overall)}</b>",
         f"   [{bar(overall)}]",
         "━━━━━━━━━━━━━━━━━━━━━━━━",
         "",
-
-        # ── MARKET SNAPSHOT ──────────────────────
         "💰 <b>Market Snapshot</b>",
         f"  Price (GC=F):  <b>${p['close']:,.1f}</b>  {chg_icon} {p['day_chg']:+.2f}%",
         f"  Day range:     ${p['day_low']:,.1f} – ${p['day_high']:,.1f}",
         f"  52-wk high:    ${p['hi52']:,.1f}  ({from52hi:+.1f}%)",
         f"  52-wk low:     ${p['lo52']:,.1f}  ({from52lo:+.1f}%)",
         "",
-
-        # ── TECHNICAL ANALYSIS ───────────────────
         "📈 <b>Technical Analysis</b>",
         f"  Score: {tech_score:.0f}/100 — {score_label(tech_score)}",
         f"  Trend: {p['trend_label']}",
@@ -169,15 +151,11 @@ def build_message(p, news_avg, headlines, pos, neg, neu):
         f"  SMA-50: ${p['sma50']:,.1f}  ({p['vs_sma50']:+.2f}%)",
         f"  RSI-14: {rsi_label(p['rsi'])}",
         "",
-
-        # ── NEWS SENTIMENT ───────────────────────
         "📰 <b>News Sentiment</b>",
         f"  Score: {news_score:.0f}/100 — {score_label(news_score)}",
         f"  Avg VADER compound: {news_avg:+.3f}",
         f"  Articles: 🟢 {pos} bullish · ⚪ {neu} neutral · 🔴 {neg} bearish",
         "",
-
-        # ── TOP HEADLINES ────────────────────────
         "🗞️ <b>Top Headlines</b>",
     ]
 
@@ -185,12 +163,17 @@ def build_message(p, news_avg, headlines, pos, neg, neu):
         icon = "🟢" if s > 0.05 else ("🔴" if s < -0.05 else "⚪")
         lines.append(f"  {icon} <a href='{link}'>{title}</a>")
 
+    if DASHBOARD_URL:
+        lines += [
+            "",
+            f"📊 <a href='{DASHBOARD_URL}'>Open Full Dashboard →</a>",
+        ]
+
     lines += [
         "",
         "━━━━━━━━━━━━━━━━━━━━━━━━",
         f"<i>Data: Yahoo Finance · Google News · VADER  |  {datetime.now(ROME):%H:%M %Z}</i>",
     ]
-
     return "\n".join(lines)
 
 
@@ -211,33 +194,46 @@ async def send_report(bot, chat_id):
 
 
 # ═══════════════════════════════════════════════
-#  6. TELEGRAM HANDLERS (polling / interactive mode)
+#  6. TELEGRAM HANDLERS
 # ═══════════════════════════════════════════════
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ Fetching data, one second…")
     await send_report(context.bot, update.effective_chat.id)
 
+async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if DASHBOARD_URL:
+        await update.message.reply_text(
+            f"📊 <b>Gold Dashboard</b>\n\n"
+            f"Open your live dashboard here:\n{DASHBOARD_URL}\n\n"
+            f"<i>The page loads live data automatically when you open it.</i>",
+            parse_mode="HTML",
+            disable_web_page_preview=False,
+        )
+    else:
+        await update.message.reply_text(
+            "⚠️ Dashboard URL not configured.\n"
+            "Add DASHBOARD_URL to your GitHub secrets and redeploy.",
+        )
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    dashboard_line = f"\n  /dashboard — open the live web dashboard" if DASHBOARD_URL else ""
     await update.message.reply_text(
-        "👋 <b>Gold Sentiment Bot ready!</b>\n\n"
+        "👋 <b>Gold Sentinel ready!</b>\n\n"
         "Commands:\n"
-        "  /report — get the full gold report right now\n"
-        "  /start  — show this message\n\n"
-        "Every day at 09:00 (Rome time) I'll send the report automatically.",
+        "  /report — full gold sentiment report\n"
+        f"  /start — show this message{dashboard_line}\n\n"
+        "Every weekday at 09:00 (Rome time) I'll send the report automatically.",
         parse_mode="HTML",
     )
 
 
 # ═══════════════════════════════════════════════
 #  7. ENTRY POINT
-#     • GitHub Actions: python gold_sentiment.py --once
-#     • Local polling:  python gold_sentiment.py
 # ═══════════════════════════════════════════════
 def main():
     import asyncio
 
     if "--once" in sys.argv:
-        # ── One-shot mode (GitHub Actions) ───────
         async def run_once():
             app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
             async with app:
@@ -246,12 +242,11 @@ def main():
         print("Report sent.")
         return
 
-    # ── Polling mode (run locally / on a server) ─
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start",  start_command))
-    app.add_handler(CommandHandler("report", report_command))
+    app.add_handler(CommandHandler("start",     start_command))
+    app.add_handler(CommandHandler("report",    report_command))
+    app.add_handler(CommandHandler("dashboard", dashboard_command))
 
-    # Schedule daily at 09:00 Rome time
     async def daily_job(context: ContextTypes.DEFAULT_TYPE):
         now  = datetime.now(ROME)
         sent = context.application.bot_data.setdefault("sent", set())
